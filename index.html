@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Causal Ordering Simulator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       HEADER
+  ═══════════════════════════════════════════ -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-icon">⧖</span>
+        <div class="brand-text">
+          <h1>Causal Ordering Simulator</h1>
+          <p>Lamport Logical Clocks · Distributed Systems</p>
+        </div>
+      </div>
+      
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════
+       CONCEPT PANEL
+  ═══════════════════════════════════════════ -->
+  <section class="concept-bar">
+    <div class="concept-inner">
+      <div class="concept-item">
+        <span class="concept-icon">📌</span>
+        <div>
+          <strong>Rule 1</strong>
+          <p>Internal event → clock + 1</p>
+        </div>
+      </div>
+      <div class="concept-divider"></div>
+      <div class="concept-item">
+        <span class="concept-icon">📤</span>
+        <div>
+          <strong>Rule 2</strong>
+          <p>Send → clock + 1, stamp message</p>
+        </div>
+      </div>
+      <div class="concept-divider"></div>
+      <div class="concept-item">
+        <span class="concept-icon">📥</span>
+        <div>
+          <strong>Rule 3</strong>
+          <p>Receive → max(local, msg) + 1</p>
+        </div>
+      </div>
+      <div class="concept-divider"></div>
+      <div class="concept-item">
+        <span class="concept-icon">🔗</span>
+        <div>
+          <strong>Causality</strong>
+          <p>A → B means A happened‑before B</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       MAIN LAYOUT
+  ═══════════════════════════════════════════ -->
+  <main class="app-main">
+
+    <!-- ── LEFT: Controls ── -->
+    <aside class="control-panel">
+      <h2 class="panel-title">Simulation Controls</h2>
+
+      <!-- Clock status -->
+      <div class="clock-status">
+        <div class="clock-card" id="clock-p1">
+          <span class="clock-proc" style="color:var(--c1)">P1</span>
+          <span class="clock-val" id="cv-p1">0</span>
+          <span class="clock-label">clock</span>
+        </div>
+        <div class="clock-card" id="clock-p2">
+          <span class="clock-proc" style="color:var(--c2)">P2</span>
+          <span class="clock-val" id="cv-p2">0</span>
+          <span class="clock-label">clock</span>
+        </div>
+        <div class="clock-card" id="clock-p3">
+          <span class="clock-proc" style="color:var(--c3)">P3</span>
+          <span class="clock-val" id="cv-p3">0</span>
+          <span class="clock-label">clock</span>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Add event -->
+      <div class="ctrl-section">
+        <h3>Add Event</h3>
+
+        <label for="sel-event-type">Type</label>
+        <select id="sel-event-type">
+          <option value="internal">Internal Event</option>
+          <option value="send">Send Message</option>
+        </select>
+
+        <label for="sel-sender">Process</label>
+        <select id="sel-sender">
+          <option value="0">P1</option>
+          <option value="1">P2</option>
+          <option value="2">P3</option>
+        </select>
+
+        <div id="receiver-wrap">
+          <label for="sel-receiver">Send To</label>
+          <select id="sel-receiver">
+            <option value="1">P2</option>
+            <option value="2">P3</option>
+          </select>
+        </div>
+
+        <label for="inp-label">Label <span class="optional">(optional)</span></label>
+        <input type="text" id="inp-label" placeholder="e.g. Write, Read…" maxlength="14" />
+
+        <button class="btn btn-add" id="btn-add">＋ Queue Event</button>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Simulation buttons -->
+      <div class="ctrl-section">
+        <h3>Run Simulation</h3>
+        <div class="sim-buttons">
+          <button class="btn btn-step"  id="btn-step">▶ Step</button>
+          <button class="btn btn-run"   id="btn-run">⏩ Run All</button>
+          <button class="btn btn-reset" id="btn-reset">↺ Reset</button>
+        </div>
+        <p class="queue-info" id="queue-info">Queue: 0 events pending</p>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Keyboard hints -->
+      <div class="key-hints">
+        <span><kbd>Space</kbd> Step</span>
+        <span><kbd>Enter</kbd> Run All</span>
+        <span><kbd>R</kbd> Reset</span>
+      </div>
+    </aside>
+
+    <!-- ── RIGHT: Visualiser ── -->
+    <div class="vis-area">
+
+      <!-- Timeline diagram -->
+      <div class="timeline-wrap">
+        <div class="tl-header">
+          <h2>Event Timeline</h2>
+          <span class="tl-hint">Scroll right as events grow →</span>
+        </div>
+
+        <!-- Process lanes + SVG overlay -->
+        <div class="tl-stage" id="tl-stage">
+
+          <!-- Process column headers -->
+          <div class="lane-headers" id="lane-headers">
+            <div class="lane-label-spacer"></div>
+            <!-- process name headers injected by JS -->
+          </div>
+
+          <!-- Scrollable lane body -->
+          <div class="lane-body-wrap" id="lane-body-wrap">
+            <div class="lane-body" id="lane-body">
+
+              <!-- Process name column (sticky left) -->
+              <div class="proc-names">
+                <div class="proc-name" style="--color:var(--c1)">P1</div>
+                <div class="proc-name" style="--color:var(--c2)">P2</div>
+                <div class="proc-name" style="--color:var(--c3)">P3</div>
+              </div>
+
+              <!-- Event rows — one per process -->
+              <div class="lanes" id="lanes">
+                <div class="lane" id="lane-0" data-proc="0"></div>
+                <div class="lane" id="lane-1" data-proc="1"></div>
+                <div class="lane" id="lane-2" data-proc="2"></div>
+              </div>
+
+              <!-- SVG overlay for arrows -->
+              <svg class="arrow-layer" id="arrow-svg"
+                   xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <marker id="arrowhead" markerWidth="8" markerHeight="6"
+                          refX="7" refY="3" orient="auto">
+                    <polygon points="0 0, 8 3, 0 6" fill="#f0883e" opacity="0.85"/>
+                  </marker>
+                </defs>
+              </svg>
+
+            </div><!-- /.lane-body -->
+          </div><!-- /.lane-body-wrap -->
+        </div><!-- /.tl-stage -->
+      </div><!-- /.timeline-wrap -->
+
+      <!-- Example reference diagram -->
+      <div class="example-card">
+        <h3>How It Works — Example</h3>
+        <pre class="example-pre">
+Process P1          Process P2          Process P3
+
+  [E1: T=1] ──────► [E2: T=2]
+      │
+      └───────────────────────► [E3: T=2]
+
+P1 creates E1  →  clock = 1
+P1 sends to P2 →  P2 receives, clock = max(1,0)+1 = 2
+P1 sends to P3 →  P3 receives, clock = max(1,0)+1 = 2
+        </pre>
+      </div>
+
+      <!-- Event log -->
+      <div class="log-card">
+        <div class="log-header">
+          <h2>Event Log</h2>
+          <span class="log-count" id="log-count">0 events</span>
+        </div>
+        <div class="log-body" id="log-body">
+          <p class="log-empty">No events yet — add events above and run the simulation.</p>
+        </div>
+      </div>
+
+      <!-- Causal order table -->
+      <div class="table-card">
+        <h2>Causal Order Table</h2>
+        <p class="table-subtitle">All executed events sorted by Lamport timestamp.</p>
+        <div class="table-scroll">
+          <table class="causal-table" id="causal-table">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Event ID</th>
+                <th>Label</th>
+                <th>Process</th>
+                <th>Type</th>
+                <th>Clock (T)</th>
+                <th>Caused By</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <tr class="empty-row">
+                <td colspan="7">— no events executed yet —</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /.vis-area -->
+  </main>
+
+  <!-- ═══════════════════════════════════════════
+       FOOTER
+  ═══════════════════════════════════════════ -->
+  <footer class="site-footer">
+    <p>Causal Ordering Simulator &nbsp;·&nbsp; Lamport Logical Clocks (1978) &nbsp;</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
